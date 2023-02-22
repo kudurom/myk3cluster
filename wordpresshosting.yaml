@@ -197,3 +197,14 @@ spec:
   selector:
     app: phpmyadmin
   type: LoadBalancer
+---
+  apiVersion: mysql.oracle.com/v2
+kind: InnoDBCluster
+metadata:
+  name: mycluster
+spec:
+  secretName: mypwds
+  tlsUseSelfSigned: true
+  instances: 3
+  router:
+    instances: 1
