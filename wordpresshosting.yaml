@@ -1,0 +1,189 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wordpress-mysql
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  namespace: wordpress-mysql
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      containers:
+      - name: wordpress
+        image: wordpress:latest
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: mysql
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mypwds
+              key: mysql-password
+        ports:
+        - containerPort: 80
+          name: wordpress
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: wordpress-mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  serviceName: mysql
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql/mysql-server:8.0.23
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mypwds
+              key: mysql-root-password
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+      - name: mysql-sidecar
+        image: mysql/mysql-router:8.0.23
+        args: ["--config=/etc/mysqlrouter/mysqlrouter.conf"]
+        volumeMounts:
+        - name: mysql-router-config
+          mountPath: /etc/mysqlrouter
+      volumes:
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: mysql-data
+      - name: mysql-router-config
+        configMap:
+          name: mysql-router-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-router-config
+  namespace: wordpress-mysql
+data:
+  mysqlrouter.conf: |-
+    [DEFAULT]
+    user=mysqlrouter
+    runtime_folder=/var/run/mysqlrouter
+    log_folder=/var/log/mysqlrouter
+    bootstrap_folder=/var/lib/mysqlrouter
+    [logger]
+    level=INFO
+    [routing:primary]
+    bind_address=0.0.0.0
+    bind_port=6446
+    mode=read-write
+    destinations=mysql-0.mysql:3306,mysql-1.mysql:3306,mysql-2.mysql:3306
+    [routing:secondary]
+    bind_address=0.0.0.0
+    bind_port=6447
+    mode=read-only
+    destinations=mysql-0.mysql:3306,mysql-1.mysql:3306,mysql-2.mysql:3306
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: wordpress-mysql
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+  clusterIP: None
+  selector:
+    app: mysql
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-primary
+  namespace: wordpress-mysql
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+  selector:
+    app: mysql
+    role: primary
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-secondary
+  namespace: wordpress-mysql
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+  selector:
+    app: mysql
+    role: secondary
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin
+  namespace: wordpress-mysql
+spec:
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+    spec:
+      containers:
+      - name: phpmyadmin
+        image: phpmyadmin/phpmyadmin:latest
+        env:
+        - name: PMA_HOST
+          value: mysql-primary
+        - name: PMA_USER
+          value: root
+        - name: PMA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mypwds
+              key: phpmyadmin-password
+        ports:
+        - containerPort: 80
+          name: phpmyadmin
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phpmyadmin
+  namespace: wordpress-mysql
+spec:
+  ports:
+  - name: phpmyadmin
+    port: 80
+    targetPort: 80
+  selector:
+    app: phpmyadmin
+  type: LoadBalancer
