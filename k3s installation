@@ -1,8 +1,11 @@
-
+Main Server
 curl -sfL https://get.k3s.io | sh -s - server --cluster-init --node-taint CriticalAddonsOnly=true:NoExecute --disable traefik --disable servicelb --write-kubeconfig-mode 644
 
-curl -sfL https://get.k3s.io | K3S_TOKEN=K10787178397dd22fe78f8c35bc92896c4b63534cec5711b1598143fa3b0ba80e86::server:7c3289c0f5df66144016f26565c75e30 sh -s - server --server https://192.168.1.95:6443 --disable traefik --disable servicelb --write-kubeconfig-mode 644
+Addong Servers
+curl -sfL https://get.k3s.io | K3S_TOKEN=secret sh -s - server --server https://192.168.1.xx:6443 --disable traefik --disable servicelb --write-kubeconfig-mode 644
 
-curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.95:6443 K3S_TOKEN=K10787178397dd22fe78f8c35bc92896c4b63534cec5711b1598143fa3b0ba80e86::server:7c3289c0f5df66144016f26565c75e30 sh -
+Workers
+curl -sfL https://get.k3s.io | K3S_URL=https://192.168.1.xx:6443 K3S_TOKEN=secret::server:7c3289c0f5df66144016f26565c75e30 sh -
 
+Storage Class turn off
 kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
