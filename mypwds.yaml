@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mypwds
-type: Opaque
-data:
-  rootUser: cm9vdA==
-  rootHost: JQ==
-  rootPassword: c2FraWxh
