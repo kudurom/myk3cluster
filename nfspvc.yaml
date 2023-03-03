@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: truenas-nfs-pv
+  name: nfs
 spec:
   capacity:
     storage: 100Gi
@@ -14,7 +14,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: truenas-nfs-pvc
+  name: nfs
 spec:
   accessModes:
     - ReadWriteMany
